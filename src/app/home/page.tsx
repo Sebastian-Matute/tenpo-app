@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
-
+import axios from "axios";
 interface Pokemon {
   id: number;
   name: string;
@@ -36,22 +36,31 @@ export default function Home() {
     const fetchData = async () => {
       try {
         setLoading(true);
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+          throw new Error("Authentication required");
+        }
+
+        const axiosInstance = axios.create({
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
 
         const offset = (page - 1) * itemsPerPage;
-        const response = await fetch(
+
+        const response = await axiosInstance.get(
           `https://pokeapi.co/api/v2/pokemon?offset=${offset}&limit=${itemsPerPage}`
         );
 
-        if (!response.ok) {
-          throw new Error("API Response failed");
-        }
-
-        const result = await response.json();
+        const result = response.data;
 
         const pokemonDetails = await Promise.all(
           result.results.map(async (pokemon: Pokemon) => {
-            const detailResponse = await fetch(pokemon.url);
-            return await detailResponse.json();
+            const detailResponse = await axiosInstance.get(pokemon.url);
+            return detailResponse.data;
           })
         );
 
@@ -59,7 +68,17 @@ export default function Home() {
         setTotalPages(Math.ceil(totalCount / itemsPerPage));
         setData(pokemonDetails);
       } catch (error: any) {
-        setError(error.message);
+        if (axios.isAxiosError(error)) {
+          if (error.response?.status === 401) {
+            setError("Session expired. Please log in again." as any);
+          } else {
+            setError(
+              error.response?.data?.message || error.message || "API Error"
+            );
+          }
+        } else {
+          setError(error.message || "Unknown error occurred");
+        }
       } finally {
         setLoading(false);
       }
@@ -105,7 +124,7 @@ export default function Home() {
     try {
       localStorage.removeItem("token");
       localStorage.removeItem("isLoggedIn");
-      
+
       router.push("/");
     } catch (error) {
       console.error("Logout error:", error);
@@ -119,7 +138,10 @@ export default function Home() {
       <header className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Welcome to the Pokedex</h1>
 
-        <button className="bg-red-600 text-white px-4 py-2 rounded-md" onClick={handleLogout}>
+        <button
+          className="bg-red-600 text-white px-4 py-2 rounded-md"
+          onClick={handleLogout}
+        >
           Logout
         </button>
       </header>
