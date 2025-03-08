@@ -1,7 +1,8 @@
-'use client';
+"use client";
 import Input from "./Input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import generateToken from "@/utils/utils";
 
 export default function Home() {
   const router = useRouter();
@@ -11,8 +12,9 @@ export default function Home() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  const handleChange = (e) => {
+  const handleChange = (e: any) => {
     const { name, value } = e.target;
     setCredentials((prev) => ({
       ...prev,
@@ -20,46 +22,40 @@ export default function Home() {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      // Opción 1: API interna
-      const response = await fetch("/api/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Error al iniciar sesión");
-      }
-
-      // Guardar token en localStorage o cookies
-      localStorage.setItem("token", data.token);
-
-      // Redireccionar al home
-      router.push("/home");
-
-      // Opción 2: Para demo, simplemente verificar credenciales hardcodeadas
-      /*
-      if (credentials.email === 'usuario@ejemplo.com' && credentials.password === '123456') {
-        localStorage.setItem('isLoggedIn', 'true');
-        router.push('/home');
+      if (
+        credentials.email === "jhon.doe@mail.com" &&
+        credentials.password === "Doe123*"
+      ) {
+        localStorage.setItem("token", generateToken(20));
+        localStorage.setItem("isLoggedIn", "true");
+        router.push("/home");
       } else {
-        setError('Credenciales incorrectas');
+        setError("Wrong credentials!");
       }
-      */
-    } catch (err) {
-      setError(err.message || "Error al iniciar sesión");
+    } catch (err: any) {
+      setError(err.message || "Error trying login");
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setIsClient(true);
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    if (isLoggedIn) {
+      router.push("/home");
+    }
+  }, [router]);
+
+  if (!isClient) {
+    return null;
+  }
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 ">
@@ -67,9 +63,11 @@ export default function Home() {
         label="Email"
         type="email"
         id="email"
+        value={credentials.email}
         required={true}
         disabled={false}
-        placeholder=""
+        placeholder="user@example.com"
+        onChange={handleChange}
       />
       <Input
         label="Password"
@@ -77,7 +75,9 @@ export default function Home() {
         id="password"
         required={true}
         disabled={false}
-        placeholder=""
+        value={credentials.password}
+        placeholder="*********"
+        onChange={handleChange}
       />
       <button
         type="submit"
@@ -86,6 +86,13 @@ export default function Home() {
       >
         {loading ? "Cargando..." : "Iniciar sesión"}
       </button>
+
+      {error && (
+        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
     </form>
   );
 }
