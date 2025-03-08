@@ -51,6 +51,11 @@ export default function Home() {
 
         const offset = (page - 1) * itemsPerPage;
 
+        // En este punto se puede crear un archivo cliente que contenga la configuración
+        // de axios e implementar un patrón singleton para que solo exista esa sola instancia
+        // mejorando la eficencia y el espacio en memoria
+
+
         const response = await axiosInstance.get(
           `https://pokeapi.co/api/v2/pokemon?offset=${offset}&limit=${itemsPerPage}`
         );
